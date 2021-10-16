@@ -14,7 +14,14 @@ const create2DArray = (rows, columns, initialValue = false) => {
 		}
 		arr2D.push(row);
 	}
+
 	return arr2D;
+};
+
+const between = (num, start, end) => {
+	if (num >= start && num <= end) return true;
+
+	return false;
 };
 
 class Position {
@@ -211,6 +218,98 @@ class Game {
 		return true;
 	}
 
+	/**
+	 * Check if there is a wall near current
+	 * @param coords [row, col]
+	 * @param ord true | false = horizontal | vertical
+	 */
+	areNeighbors([row, col], ord) {
+		const checkSides = ([x, y], dir) => {
+			// check if there is an opposite wall to left/right | top/bottom
+			if (dir !== 1 && between(ord ? col + x : row + y, 0, 7)) {
+				if (mW[row + (!ord ? y : 0)][col + (ord ? x : 0)]) return true;
+
+				if (between(ord ? row - y : col - x, 0, 7)) {
+					if (mW[row + (!ord ? y : -y)][col + (ord ? x : -x)]) {
+						return true;
+					}
+				}
+
+				if (between(ord ? row + y : col + x, 0, 7)) {
+					if (mW[row + y][col + x]) return true;
+				}
+			}
+
+			// check if there is a similar wall to left/right | top/bottom
+			if (dir !== 1 && between(ord ? col + 2 * x : row + 2 * y, 0, 7)) {
+				if (sW[row + (!ord ? 2 * y : 0)][col + (ord ? 2 * x : 0)]) {
+					return true;
+				}
+			}
+
+			// check if there is a wall to middle of current
+			if (dir === 1) {
+				if (between(ord ? row - y : col - x, 0, 7)) {
+					if (mW[row - (!ord ? 0 : y)][col - (ord ? 0 : x)]) {
+						return true;
+					}
+				}
+				if (between(ord ? row + y : col + y, 0, 7)) {
+					if (mW[row + (!ord ? 0 : y)][col + (ord ? 0 : x)]) {
+						return true;
+					}
+				}
+			}
+
+			return false;
+		};
+
+		const { horizontal, vertical } = this.board.walls;
+		// mainWalls and subWalls
+		const mW = ord ? vertical : horizontal;
+		const sW = ord ? horizontal : vertical;
+
+		const touches = [
+			(ord ? col === 0 : row === 0) ||
+				checkSides(ord ? [-1, 1] : [1, -1], 0),
+			checkSides([1, 1], 1),
+			(ord ? col === 7 : row === 7) || checkSides([1, 1], 2),
+		];
+
+		return touches;
+	}
+
+	/**
+	 * Check if path to goal lines still exists after placing wall
+	 * @param coords [row, col]
+	 * @param ord true | false = horizontal | vertical
+	 */
+	isExistPathAfterPlaceWall([row, col], ord) {
+		if (this.areNeighbors([row, col], ord).filter((n) => n).length < 2) {
+			return true;
+		}
+
+		if (ord) {
+			this.openWays.upDown[row][col] = false;
+			this.openWays.upDown[row][col + 1] = false;
+		} else {
+			this.openWays.leftRight[row][col] = false;
+			this.openWays.leftRight[row + 1][col] = false;
+		}
+
+		const result = this._existPaths();
+
+		if (ord) {
+			this.openWays.upDown[row][col] = true;
+			this.openWays.upDown[row][col + 1] = true;
+		} else {
+			this.openWays.leftRight[row][col] = true;
+			this.openWays.leftRight[row + 1][col] = true;
+		}
+
+		return result;
+	}
+
 	placeHorizontalWall([row, col], needCheck = false) {
 		// if (needCheck && !this.testIfExistPathsToGoalLinesAfterPlaceHorizontalWall(row, col)) {
 		if (needCheck) {
@@ -322,11 +421,7 @@ class Game {
 
 	_existPath(pawn) {
 		const visited = create2DArray(9, 9);
-		// const {UP, DOWN, LEFT, RIGHT} = pawnMoves;
-		// const pawnMoveTuples = [MOVE_UP, MOVE_LEFT, MOVE_RIGHT, MOVE_DOWN];
 		const depthFirstSearch = (position, goalRow) => {
-			// const pawnPosition = new Position(position.row, position.col);
-
 			for (const [key, move] of Object.entries(pawnMoves)) {
 				const pawnPosition = new Position(position.row, position.col);
 				if (this.isOpenWay(position, move)) {
@@ -346,104 +441,8 @@ class Game {
 			}
 
 			return false;
-			// for (const pawnMoveTuple of pawnMoveTuples) {
-			// 	if (this.isOpenWay(currentRow, currentCol, pawnMoveTuple)) {
-			// 		const nextRow = currentRow + pawnMoveTuple[0];
-			// 		const nextCol = currentCol + pawnMoveTuple[1];
-			// 		if (!visited[nextRow][nextCol]) {
-			// 			visited[nextRow][nextCol] = true;
-			// 			if (nextRow === goalRow) {
-			// 				return true;
-			// 			}
-			// 			if (
-			// 				depthFirstSearch.bind(this)(
-			// 					nextRow,
-			// 					nextCol,
-			// 					goalRow
-			// 				)
-			// 			) {
-			// 				return true;
-			// 			}
-			// 		}
-			// 	}
-			// }
-			// return false;
 		};
 
 		return depthFirstSearch(pawn.position, pawn.goalRow);
 	}
-
-	// static setWallsBesidePawn(wall2DArrays, pawn) {
-	// 	const { row, col } = pawn.position;
-	// 	if (row >= 1) {
-	//         if (col >= 1) {
-	//             wall2DArrays.horizontal[row-1][col-1] = true;
-	//             wall2DArrays.vertical[row-1][col-1] = true;
-	//             if (col >= 2) {
-	//                 wall2DArrays.horizontal[row-1][col-2] = true;
-	//             }
-	//         }
-	//         if (col <= 7) {
-	//             wall2DArrays.horizontal[row-1][col] = true;
-	//             wall2DArrays.vertical[row-1][col] = true;
-	//             if (col <= 6) {
-	//                 wall2DArrays.horizontal[row-1][col+1] = true;
-	//             }
-	//         }
-	//         if (row >= 2) {
-	//             if (col >= 1) {
-	//                 wall2DArrays.vertical[row-2][col-1] = true;
-	//             }
-	//             if (col <= 7) {
-	//                 wall2DArrays.vertical[row-2][col] = true;
-	//             }
-	//         }
-	//     }
-	//     if (row <= 7) {
-	//         if (col >= 1) {
-	//             wall2DArrays.horizontal[row][col-1] = true;
-	//             wall2DArrays.vertical[row][col-1] = true;
-	//             if (col >= 2) {
-	//                 wall2DArrays.horizontal[row][col-2] = true;
-	//             }
-	//         }
-	//         if (col <= 7) {
-	//             wall2DArrays.horizontal[row][col] = true;
-	//             wall2DArrays.vertical[row][col] = true;
-	//             if (col <= 6) {
-	//                 wall2DArrays.horizontal[row][col+1] = true;
-	//             }
-	//         }
-	//         if (row <= 6) {
-	//             if (col >= 1) {
-	//                 wall2DArrays.vertical[row+1][col-1] = true;
-	//             }
-	//             if (col <= 7) {
-	//                 wall2DArrays.vertical[row+1][col] = true;
-	//             }
-	//         }
-	//     }
-	// }
 }
-
-const game = new Game();
-// console.log(game.isOpenWay(game.pawn1.position, pawnMoves.UP));
-game.movePawn(pawnMoves.UP);
-// console.log(game._existPath(new Pawn(0, true)));
-
-const a = [1, 1];
-const b = ([row, col]) => {
-	return { row: 1 + row, col: 1 + col };
-};
-
-// console.log(b(a));
-
-// const position = new Position(0, 0);
-// const position1 = position.newMove([1, 1]);
-// console.log(position);
-// console.log(position1)
-
-game.placeHorizontalWall([7, 3]);
-game.placeHorizontalWall([7, 1]);
-game.placeVerticalWall([7, 0]);
-console.log(game._existPath(new Pawn(0, true)));
