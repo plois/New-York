@@ -162,7 +162,22 @@ tr.row td.col {
 	margin: 0 auto 2vw;
 }
 
-.buttons button {
+.choose-mode {
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+	position: absolute;
+	height: 9vw;
+	width: 17vw;
+	background-color: #662330;
+	z-index: 100;
+}
+
+.choose-mode.hidden {
+	display: none;
+}
+
+button {
 	cursor: pointer;
 	margin: 1vw auto;
 	width: 10vw;

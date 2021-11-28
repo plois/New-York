@@ -10,24 +10,39 @@ class View {
 			document.getElementById("pawn_1"),
 			document.getElementById("pawn_2"),
 		];
+		this.htmlChooseMode = document.getElementsByClassName("choose-mode")[0];
 
 		this.buttons = {
 			newGame: document.getElementById("new_game"),
 			endGame: document.getElementById("end_game"),
+			onePlayer: document.getElementById("one_player"),
+			twoPlayers: document.getElementById("two_players"),
 		};
 
+		this.buttons.onePlayer.disabled = true;
+		this.buttons.twoPlayers.disabled = true;
+		this.buttons.newGame.disabled = false;
+		this.buttons.endGame.disabled = true;
+
 		const onclickNewGame = (e) => {
-			this.startNewGame();
+			this.htmlChooseMode.classList.remove("hidden");
+			this.buttons.onePlayer.disabled = false;
+			this.buttons.twoPlayers.disabled = false;
 		};
 		const onclickEndGame = (e) => {
 			this.endGame();
 		};
+		const onclickOne = (e) => {
+			this.startNewGame(false);
+		};
+		const onclickTwo = (e) => {
+			this.startNewGame(true);
+		};
 
 		this.buttons.newGame.onclick = onclickNewGame;
 		this.buttons.endGame.onclick = onclickEndGame;
-
-		this.buttons.newGame.disabled = false;
-		this.buttons.endGame.disabled = true;
+		this.buttons.onePlayer.onclick = onclickOne;
+		this.buttons.twoPlayers.onclick = onclickTwo;
 	}
 
 	get game() {
@@ -43,8 +58,11 @@ class View {
 		this.htmlWallNum = { pawn_1: wallNumList[0], pawn_2: wallNumList[1] };
 	}
 
-	startNewGame() {
-		this.controller.startNewGame();
+	startNewGame(isHuman) {
+		this.htmlChooseMode.classList.add("hidden");
+		this.controller.startNewGame(isHuman, 7500);
+		this.buttons.onePlayer.disabled = true;
+		this.buttons.twoPlayers.disabled = true;
 		this.buttons.newGame.disabled = true;
 		this.buttons.endGame.disabled = false;
 	}
