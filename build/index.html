@@ -14,6 +14,7 @@
 		<script src="js/models/functions.js"></script>
 		<script src="js/view.js"></script>
 		<script src="js/controller.js"></script>
+		<script src="js/ai.js"></script>
 	</head>
 	<body>
 		<div class="board_table_container">
@@ -351,6 +352,10 @@
 			<div class="control_panel">
 				<div id="message_box">Welcome!</div>
 				<div class="buttons">
+					<div class="choose-mode hidden">
+						<button id="one_player">PvE</button>
+						<button id="two_players">PvP</button>
+					</div>
 					<button id="new_game">New Game</button>
 					<button id="end_game">End Game</button>
 				</div>
@@ -369,7 +374,7 @@
 			</div>
 		</div>
 		<script>
-			const controller = new Controller();
+			const controller = new Controller(0.2);
 		</script>
 		<noscript>This site needs JavaScript enabled to work.</noscript>
 	</body>

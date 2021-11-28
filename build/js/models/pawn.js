@@ -25,9 +25,10 @@ class Position {
 }
 
 class Pawn {
-	constructor(index) {
+	constructor(index, isHuman = true) {
 		this.index = index;
 		this.side = index;
+		this.isHuman = isHuman;
 		this.position = null;
 		this.goalRow = null;
 		this.numberOfWalls = 10;

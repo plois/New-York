@@ -1,6 +1,6 @@
 class Game {
-	constructor() {
-		this.board = new Board();
+	constructor(isHuman) {
+		this.board = new Board(isHuman);
 		this.winner = null;
 		this._turn = 0;
 
@@ -41,12 +41,61 @@ class Game {
 		return this.board.pawns[1];
 	}
 
+	get pawnIndexOfTurn() {
+		return this.turn % 2;
+	}
+
+	get pawnIndexOfNotTurn() {
+		return (this.turn + 1) % 2;
+	}
+
 	get pawnOfTurn() {
-		return this.board.pawns[this.turn % 2];
+		return this.board.pawns[this.pawnIndexOfTurn];
 	}
 
 	get pawnOfNotTurn() {
-		return this.board.pawns[(this.turn + 1) % 2];
+		return this.board.pawns[this.pawnIndexOfNotTurn];
+	}
+
+	get probableNextWalls() {
+		if (this._probableValidNextWallsUpdated) {
+			return this._probableValidNextWalls;
+		}
+		this._probableValidNextWallsUpdated = true;
+
+		const _probableValidNextWalls = this._probableNextWalls;
+
+		if (this.turn >= 6) {
+			for (let i = 0; i < 8; i++) {
+				_probableValidNextWalls.horizontal[i][0] = true;
+				_probableValidNextWalls.horizontal[i][7] = true;
+			}
+		}
+
+		if (this.turn >= 3) {
+			Game.setWallsBesidePawn(
+				_probableValidNextWalls,
+				this.pawnOfNotTurn
+			);
+		}
+		if (
+			this.turn >= 6 ||
+			indices2DArray(this.board.walls.horizontal, true).length > 0 ||
+			indices2DArray(this.board.walls.vertical, true).length > 0
+		) {
+			// support myself
+			Game.setWallsBesidePawn(_probableValidNextWalls, this.pawnOfTurn);
+		}
+		_probableValidNextWalls.horizontal = logicalAndBetween2DArray(
+			_probableValidNextWalls.horizontal,
+			this.validNextWalls.horizontal
+		);
+		_probableValidNextWalls.vertical = logicalAndBetween2DArray(
+			_probableValidNextWalls.vertical,
+			this.validNextWalls.vertical
+		);
+		this._probableValidNextWalls = _probableValidNextWalls;
+		return _probableValidNextWalls;
 	}
 
 	get validNextPositions() {
@@ -71,29 +120,25 @@ class Game {
 			if (movePosition.equals(this.pawnOfNotTurn.position)) {
 				if (this.isOpenWay(movePosition, mainMove)) {
 					let mainMovePosition = movePosition.newMove(mainMove);
-					this._validNextPositions[mainMovePosition.row][
-						mainMovePosition.col
-					] = true;
+					let { row, col } = mainMovePosition;
+					this._validNextPositions[row][col] = true;
 				} else {
-					if (this.isOpenWay(mainMovePosition, subMove1)) {
+					if (this.isOpenWay(movePosition, subMove1)) {
 						let mainSub1MovePosition =
-							mainMovePosition.newAddMove(subMove1);
-						this._validNextPositions[mainSub1MovePosition.row][
-							mainSub1MovePosition.col
-						] = true;
+							movePosition.newMove(subMove1);
+						let { row, col } = mainSub1MovePosition;
+						this._validNextPositions[row][col] = true;
 					}
-					if (this.isOpenWay(mainMovePosition, subMove2)) {
+					if (this.isOpenWay(movePosition, subMove2)) {
 						let mainSub2MovePosition =
-							mainMovePosition.newMove(subMove2);
-						this._validNextPositions[mainSub2MovePosition.row][
-							mainSub2MovePosition.col
-						] = true;
+							movePosition.newMove(subMove2);
+						let { row, col } = mainSub2MovePosition;
+						this._validNextPositions[row][col] = true;
 					}
 				}
 			} else {
-				this._validNextPositions[movePosition.row][
-					movePosition.col
-				] = true;
+				let { row, col } = movePosition;
+				this._validNextPositions[row][col] = true;
 			}
 		}
 	}
@@ -221,6 +266,88 @@ class Game {
 		}
 
 		return result;
+	}
+
+	adjustProbableValidNextWallForAfterPlaceHorizontalWall(row, col) {
+		if (row >= 1) {
+			this._probableNextWalls.vertical[row - 1][col] = true;
+		}
+		if (row <= 6) {
+			this._probableNextWalls.vertical[row + 1][col] = true;
+		}
+		if (col >= 1) {
+			this._probableNextWalls.vertical[row][col - 1] = true;
+			if (row >= 1) {
+				this._probableNextWalls.vertical[row - 1][col - 1] = true;
+			}
+			if (row <= 6) {
+				this._probableNextWalls.vertical[row + 1][col - 1] = true;
+			}
+			if (col >= 2) {
+				this._probableNextWalls.horizontal[row][col - 2] = true;
+				this._probableNextWalls.vertical[row][col - 2] = true;
+				if (col >= 3) {
+					this._probableNextWalls.horizontal[row][col - 3] = true;
+				}
+			}
+		}
+		if (col <= 6) {
+			this._probableNextWalls.vertical[row][col + 1] = true;
+			if (row >= 1) {
+				this._probableNextWalls.vertical[row - 1][col + 1] = true;
+			}
+			if (row <= 6) {
+				this._probableNextWalls.vertical[row + 1][col + 1] = true;
+			}
+			if (col <= 5) {
+				this._probableNextWalls.horizontal[row][col + 2] = true;
+				this._probableNextWalls.vertical[row][col + 2] = true;
+				if (col <= 4) {
+					this._probableNextWalls.horizontal[row][col + 3] = true;
+				}
+			}
+		}
+	}
+
+	adjustProbableValidNextWallForAfterPlaceVerticalWall(row, col) {
+		if (col >= 1) {
+			this._probableNextWalls.horizontal[row][col - 1] = true;
+		}
+		if (col <= 6) {
+			this._probableNextWalls.horizontal[row][col + 1] = true;
+		}
+		if (row >= 1) {
+			this._probableNextWalls.horizontal[row - 1][col] = true;
+			if (col >= 1) {
+				this._probableNextWalls.horizontal[row - 1][col - 1] = true;
+			}
+			if (col <= 6) {
+				this._probableNextWalls.horizontal[row - 1][col + 1] = true;
+			}
+			if (row >= 2) {
+				this._probableNextWalls.vertical[row - 2][col] = true;
+				this._probableNextWalls.horizontal[row - 2][col] = true;
+				if (row >= 3) {
+					this._probableNextWalls.vertical[row - 3][col] = true;
+				}
+			}
+		}
+		if (row <= 6) {
+			this._probableNextWalls.horizontal[row + 1][col] = true;
+			if (col >= 1) {
+				this._probableNextWalls.horizontal[row + 1][col - 1] = true;
+			}
+			if (col <= 6) {
+				this._probableNextWalls.horizontal[row + 1][col + 1] = true;
+			}
+			if (row <= 5) {
+				this._probableNextWalls.vertical[row + 2][col] = true;
+				this._probableNextWalls.horizontal[row + 2][col] = true;
+				if (row <= 4) {
+					this._probableNextWalls.vertical[row + 3][col] = true;
+				}
+			}
+		}
 	}
 
 	placeHorizontalWall([row, col], needCheck = false) {
@@ -354,5 +481,57 @@ class Game {
 		};
 
 		return depthFirstSearch(pawn.position, pawn.goalRow);
+	}
+
+	static setWallsBesidePawn(wall2DArrays, pawn) {
+		const { row, col } = pawn.position;
+		if (row >= 1) {
+			if (col >= 1) {
+				wall2DArrays.horizontal[row - 1][col - 1] = true;
+				wall2DArrays.vertical[row - 1][col - 1] = true;
+				if (col >= 2) {
+					wall2DArrays.horizontal[row - 1][col - 2] = true;
+				}
+			}
+			if (col <= 7) {
+				wall2DArrays.horizontal[row - 1][col] = true;
+				wall2DArrays.vertical[row - 1][col] = true;
+				if (col <= 6) {
+					wall2DArrays.horizontal[row - 1][col + 1] = true;
+				}
+			}
+			if (row >= 2) {
+				if (col >= 1) {
+					wall2DArrays.vertical[row - 2][col - 1] = true;
+				}
+				if (col <= 7) {
+					wall2DArrays.vertical[row - 2][col] = true;
+				}
+			}
+		}
+		if (row <= 7) {
+			if (col >= 1) {
+				wall2DArrays.horizontal[row][col - 1] = true;
+				wall2DArrays.vertical[row][col - 1] = true;
+				if (col >= 2) {
+					wall2DArrays.horizontal[row][col - 2] = true;
+				}
+			}
+			if (col <= 7) {
+				wall2DArrays.horizontal[row][col] = true;
+				wall2DArrays.vertical[row][col] = true;
+				if (col <= 6) {
+					wall2DArrays.horizontal[row][col + 1] = true;
+				}
+			}
+			if (row <= 6) {
+				if (col >= 1) {
+					wall2DArrays.vertical[row + 1][col - 1] = true;
+				}
+				if (col <= 7) {
+					wall2DArrays.vertical[row + 1][col] = true;
+				}
+			}
+		}
 	}
 }
